@@ -38,7 +38,9 @@ docs/
 repository.popcornmix/                           source of the repository add-on
   addon.xml.in                                   @DIRS@ is filled in from what docs/ holds
   icon.png, fanart.png
-tools/make_repo.py
+tools/
+  make_repo.py                                   files a zip, regenerates docs/
+  build-addons.sh                                builds every target and files the results
 ```
 
 The zip path Kodi requests is fixed as `<datadir>/<id>/<id>-<version>.zip`, so two builds of
@@ -56,43 +58,65 @@ add-on, which is `ADDON_API` in Kodi's `version.txt`. That trails the Kodi versi
 development cycle: Kodi 22 alphas report `21.90.x` and only the release reports `22.0.0`,
 which is why each range starts at the previous major's `.90`.
 
-## Adding a build
-
-Build the add-on with LibreELEC's buildsystem, so it links against the same libraries as the
-image it will run on:
+## Rebuilding
 
 ```bash
-cd ~/projects/LibreELEC.tv
-PROJECT=RPi DEVICE=RPi5 ARCH=aarch64 scripts/create_addon inputstream.airplay
+tools/build-addons.sh --pin v0.1.3 --commit    # then push
 ```
 
-which leaves the zip under `target/addons/<LibreELEC version>/<project>/<arch>/`. Then:
+That is the whole job: for each target it moves LibreELEC's pin to the given tag, builds the
+add-on with LibreELEC's buildsystem, files the zip under `docs/`, regenerates the indexes and
+the landing page, and commits. `--arch x86_64` limits it to one target; without `--pin` it
+builds whatever LibreELEC's `package.mk` currently points at.
 
-```bash
-cd ~/projects/repository.popcornmix
-tools/make_repo.py add \
-  ~/projects/LibreELEC.tv/target/addons/12.80.7/RPi5/aarch64/inputstream.airplay/inputstream.airplay-0.1.2.1.zip \
-  --series piers --arch aarch64
-git add -A docs && git commit && git push
-```
+The add-ons have to be built by LibreELEC, not by a plain cross-compiler, so that they link
+against the libraries the image actually ships — the daemon needs `libplist-2.0.so.4` and
+`libcrypto.so.3` at runtime, and gets both from Kodi's own dependencies rather than from
+anything the zip carries.
 
-`add` files the zip, pulls the artwork and changelog out of it to sit beside it, drops any
-older version of that add-on, and regenerates everything. Pages picks the change up within a
-minute or so of the push; Kodi rechecks a repository every 24 hours, or on demand from the
-add-on's context menu.
+The targets are LibreELEC's own lowest-common-denominator add-on projects, `Generic`, `ARMv8`
+and `ARMv7`, which is what every other project points its users at. This matters more than
+it looks: Kodi picks a build by architecture alone, so an aarch64 build made as RPi5 would be
+tuned for Cortex-A76, offered to a Cortex-A53 box, and crash on it.
 
-Kodi cannot tell one LibreELEC project from another, so a single aarch64 build serves RPi4,
-RPi5, Amlogic and the rest on that Kodi release. Build it against the oldest LibreELEC
-release of that series you intend to support.
+A rebuild of unchanged sources needs `PKG_REV` bumped in LibreELEC's `package.mk`. The add-on
+version is `<its own version>.<PKG_REV>`, so without that the version does not move and Kodi
+never offers the update.
 
-`tools/make_repo.py build` regenerates without adding anything — after editing
-`repository.popcornmix/addon.xml.in`, for instance. `build --check` reports a stale tree
-instead of writing to it, which is what CI runs.
+To do it by hand instead, `scripts/create_addon` leaves a zip under
+`target/addons/<LibreELEC version>/<device>/<arch>/`, and `tools/make_repo.py add <zip>
+--series piers --arch aarch64` files it. `make_repo.py build` regenerates without adding
+anything — after editing `repository.popcornmix/addon.xml.in`, say — and `build --check`
+reports a stale tree instead of writing to it, which is what CI runs.
+
+Pages picks a push up within a minute or so. Kodi rechecks a repository every 24 hours, or on
+demand from the add-on's context menu.
+
+## Automating it
+
+`build-addons.sh` is the whole of the work; what is left is deciding what runs it.
+
+The build cannot move to GitHub-hosted runners. LibreELEC builds its own toolchain per
+target, from scratch, against tens of gigabytes of sources, and neither the job time limit
+nor the 10 GB Actions cache stretches to that. On a machine with the tree already warm a
+rebuild is minutes, so the build stays where the tree is and only the trigger is worth
+moving.
+
+`.github/workflows/publish.yml` does that: give the build machine a self-hosted runner
+labelled `libreelec`, and the workflow builds every target and pushes, either from the
+Actions tab with a tag to build, or from a `repository_dispatch` that inputstream.airplay's
+own release workflow fires when it tags. Failures land in the Actions tab like any other.
+
+Short of a runner, a cron job on the build machine comparing `git ls-remote --tags` against
+LibreELEC's pin does the same with no GitHub setup, at the cost of having nowhere to look
+when it breaks. Either way it is the same script, so the ordinary manual run above is the
+thing to get right first.
 
 ## Adding a Kodi release or an architecture
 
-Add an entry to `SERIES` or `ARCHES` at the top of `tools/make_repo.py`, then `add` a build
-for it. A `<dir>` appears in the repository add-on only once a directory holds a zip, so
+Add an entry to `SERIES` or `ARCHES` at the top of `tools/make_repo.py` and a row to
+`TARGETS` in `tools/build-addons.sh`, then build it. A `<dir>` appears in the repository
+add-on only once a directory holds a zip, so
 publishing an existing user's first build for a new release requires them to get the new
 repository add-on — which is what the self-updating `repository/` directory is for. Bump the
 version in `repository.popcornmix/addon.xml.in` whenever its `<dir>` list changes, or

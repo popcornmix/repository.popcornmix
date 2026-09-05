@@ -1,0 +1,39 @@
+name: Publish
+
+# Builds every target and publishes the result.
+#
+# This needs a self-hosted runner, labelled "libreelec", on the machine holding
+# the LibreELEC checkout. A GitHub-hosted runner cannot do it: LibreELEC builds
+# its own toolchain for each target, from scratch, against sources measured in
+# tens of gigabytes, and neither the time limit nor the Actions cache stretches
+# that far. On a machine that already has the tree warm, a rebuild is minutes.
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Add-on tag or commit to build (blank: LibreELEC's current pin)"
+        required: false
+  # Fired from inputstream.airplay's own workflow when it tags a release.
+  repository_dispatch:
+    types: [addon-released]
+
+permissions:
+  contents: write
+
+concurrency: publish
+
+jobs:
+  publish:
+    runs-on: [self-hosted, libreelec]
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: master
+
+      - name: Build every target and file the results
+        env:
+          REF: ${{ inputs.ref || github.event.client_payload.ref }}
+        run: tools/build-addons.sh ${REF:+--pin "$REF"} --commit
+
+      - run: git push origin master
