@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<addons>
+  <addon id="inputstream.airplay" version="0.1.3.1" name="AirPlay Receiver" provider-name="popcornmix">
+    <requires>
+      <import addon="kodi.binary.global.main" minversion="2.0.0" version="2.0.2" />
+      <import addon="kodi.binary.global.filesystem" minversion="1.1.7" version="1.1.9" />
+      <import addon="kodi.binary.instance.inputstream" minversion="3.3.0" version="3.3.0" />
+      <import addon="xbmc.python" version="3.0.1" />
+    </requires>
+    <extension point="kodi.inputstream" name="airplay" protocols="airplay" extension="" tags="true" library_linux="inputstream.airplay.so.0.1.3" />
+    <extension point="xbmc.service" library="default.py" />
+    <extension point="xbmc.addon.metadata">
+      <platform>linux-x86_64</platform>
+      <license>GPL-3.0-or-later</license>
+      <source>https://github.com/popcornmix/inputstream.airplay</source>
+      <assets>
+        <icon>icon.png</icon>
+      </assets>
+      <summary lang="en_GB">Mirror an iPhone or iPad screen to Kodi</summary>
+      <description lang="en_GB">Receives AirPlay screen mirroring, video streamed from apps, and audio, and plays them through Kodi's own pipeline, so hardware decoding and the normal renderer are used.
+
+Video protected by DRM cannot be received: the sender blanks it before it leaves the phone.</description>
+    </extension>
+  </addon>
+</addons>

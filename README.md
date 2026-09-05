@@ -11,7 +11,7 @@ architecture, and keeps the add-on up to date from here.
 ## For users
 
 Everything they need is on the [landing page](https://popcornmix.github.io/repository.popcornmix/).
-In short: download `repository.popcornmix-2.0.0.zip`, turn on *Unknown sources* under
+In short: download `repository.popcornmix-2.1.0.zip`, turn on *Unknown sources* under
 **Settings → System → Add-ons**, install it with **Install from zip file**, then install
 AirPlay Receiver from **Install from repository → popcornmix Add-ons**.
 
@@ -27,10 +27,10 @@ docs/
     addons.xml                                     so it can update itself in place
     addons.xml.sha256
     repository.popcornmix/
-      repository.popcornmix-2.0.0.zip            the zip a user installs
+      repository.popcornmix-2.1.0.zip            the zip a user installs
       icon.png, fanart.png
   piers/aarch64/                                 one directory per Kodi release and
-    addons.xml                                     architecture
+    addons.xml                                     architecture (also omega/*)
     addons.xml.sha256
     inputstream.airplay/
       inputstream.airplay-0.1.2.1.zip
@@ -64,10 +64,10 @@ which is why each range starts at the previous major's `.90`.
 tools/build-addons.sh --pin v0.1.3 --commit    # then push
 ```
 
-That is the whole job: for each target it moves LibreELEC's pin to the given tag, builds the
+That is the whole job: for every target it moves LibreELEC's pin to the given tag, builds the
 add-on with LibreELEC's buildsystem, files the zip under `docs/`, regenerates the indexes and
-the landing page, and commits. `--arch x86_64` limits it to one target; without `--pin` it
-builds whatever LibreELEC's `package.mk` currently points at.
+the landing page, and commits. `--arch x86_64` and `--series omega` narrow it; without
+`--pin` it builds whatever each LibreELEC tree's `package.mk` currently points at.
 
 The add-ons have to be built by LibreELEC, not by a plain cross-compiler, so that they link
 against the libraries the image actually ships — the daemon needs `libplist-2.0.so.4` and
@@ -77,31 +77,63 @@ anything the zip carries.
 Only a pushed commit can be built, because LibreELEC fetches the sources from GitHub rather
 than from any checkout — which is as it should be, for a binary published under the GPL.
 
-### The build tree
-
-`build-addons.sh` builds in `~/projects/LibreELEC-addons`, a checkout kept for this and
-nothing else, made as a worktree off the ordinary one:
-
-```bash
-cd ~/projects/LibreELEC.tv
-git worktree add --detach ~/projects/LibreELEC-addons <the branch carrying the add-on package>
-ln -s ~/projects/LibreELEC.tv/sources ~/projects/LibreELEC-addons/sources
-```
-
-The symlink shares the download cache, which is most of what a fresh tree would otherwise
-have to fetch. `LE=...` points the script somewhere else.
-
-It has to be a tree with nothing in it but LibreELEC and the add-on package. Local patches
-put something no user is running into the published binary, and a patch meant for one board
-stops the other targets building at all — a Raspberry Pi kernel patch in
-`packages/linux/patches/` fails to apply to the mainline kernel that Generic and ARM use, and
-takes `linux:host` down with it, which the toolchain needs for its kernel headers. The
-ordinary working tree is for working in.
-
 The targets are LibreELEC's own lowest-common-denominator add-on projects, `Generic`, `ARMv8`
 and `ARMv7`, which is what every other project points its users at. This matters more than
 it looks: Kodi picks a build by architecture alone, so an aarch64 build made as RPi5 would be
 tuned for Cortex-A76, offered to a Cortex-A53 box, and crash on it.
+
+### The build trees
+
+`build-addons.sh` builds each Kodi release in its own LibreELEC checkout, kept for this and
+nothing else:
+
+| Series | Checkout | LibreELEC |
+|---|---|---|
+| `piers` | `~/projects/LibreELEC-addons` | master, Kodi 22 |
+| `omega` | `~/projects/LibreELEC-addons-12` | `libreelec-12.2`, Kodi 21.3 |
+
+Each is a worktree off the ordinary checkout, with the download cache shared:
+
+```bash
+cd ~/projects/LibreELEC.tv
+git worktree add --detach ~/projects/LibreELEC-addons-12 upstream/libreelec-12.2
+ln -s ~/projects/LibreELEC.tv/sources ~/projects/LibreELEC-addons-12/sources
+```
+
+LibreELEC 12 does not carry the add-on, so its tree needs both packages copied in — from
+git rather than from a working tree, so no local patches come with them:
+
+```bash
+cd ~/projects/LibreELEC.tv
+git archive <branch> packages/mediacenter/kodi-binary-addons/inputstream.airplay \
+                     packages/addons/addon-depends/inputstream.airplay-depends |
+  tar -x -C ~/projects/LibreELEC-addons-12
+```
+
+`LE_PIERS` and `LE_OMEGA` point the script somewhere else.
+
+A tree has to hold nothing but LibreELEC and the add-on package. Local patches put something
+no user is running into the published binary, and a patch meant for one board stops the other
+targets building at all — a Raspberry Pi kernel patch in `packages/linux/patches/` fails to
+apply to the mainline kernel that Generic and ARM use, and takes `linux:host` down with it,
+which the toolchain needs for its kernel headers. The ordinary working tree is for working in.
+
+### Why a build per Kodi release
+
+The binary interface versions are compiled in, so one build cannot serve both:
+
+| Interface | Kodi 21 Omega | Kodi 22 Piers |
+|---|---|---|
+| `kodi.binary.global.main` | 2.0.2 | 2.0.3 |
+| `kodi.binary.global.filesystem` | 1.1.9 | 1.1.11 |
+| `kodi.binary.instance.inputstream` | 3.3.0 | 3.4.0 |
+
+Kodi refuses an add-on whose `<requires>` it cannot satisfy, and the `minversion`/`maxversion`
+on each `<dir>` keeps it from ever being offered the wrong one.
+
+Omega has no `INPUTSTREAM_LOW_LATENCY_LIVE`, so the "start mirroring at the live edge"
+setting does nothing there. The add-on's CMake detects that with `check_cxx_source_compiles`
+rather than assuming, so the same source builds against either.
 
 A rebuild of unchanged sources needs `PKG_REV` bumped in LibreELEC's `package.mk`. The add-on
 version is `<its own version>.<PKG_REV>`, so without that the version does not move and Kodi
@@ -138,8 +170,9 @@ thing to get right first.
 
 ## Adding a Kodi release or an architecture
 
-Add an entry to `SERIES` or `ARCHES` at the top of `tools/make_repo.py` and a row to
-`TARGETS` in `tools/build-addons.sh`, then build it. A `<dir>` appears in the repository
+Add an entry to `SERIES` or `ARCHES` at the top of `tools/make_repo.py`, a row to `TARGETS`
+in `tools/build-addons.sh`, and for a new Kodi release an entry in its `TREES`, then build
+it. A `<dir>` appears in the repository
 add-on only once a directory holds a zip, so
 publishing an existing user's first build for a new release requires them to get the new
 repository add-on — which is what the self-updating `repository/` directory is for. Bump the
