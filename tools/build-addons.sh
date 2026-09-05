@@ -13,7 +13,13 @@
 set -o errexit -o nounset -o pipefail
 
 HERE=$(cd "$(dirname "$0")/.." && pwd)
-LE=${LE:-${HOME}/projects/LibreELEC.tv}
+
+# A LibreELEC checkout kept for this and nothing else. What gets published has
+# to be built from a tree with nothing in it but LibreELEC and the add-on
+# package -- a working tree with local kernel or Kodi patches in it builds
+# something no user is running, and patches meant for one board stop the other
+# targets building at all. See "The build tree" in the README.
+LE=${LE:-${HOME}/projects/LibreELEC-addons}
 ADDONS=${ADDONS:-inputstream.airplay}
 SERIES=${SERIES:-piers}
 
@@ -53,7 +59,15 @@ if [ -n "${pin}" ]; then
   for addon in ${ADDONS}; do
     package="packages/mediacenter/kodi-binary-addons/${addon}/package.mk"
     site=$(sed -n 's/^PKG_SITE="\(.*\)"/\1/p' "${package}")
-    sha=$(git ls-remote "${site}" "${pin}^{}" "${pin}" | head -1 | cut -f1)
+    if [[ "${pin}" =~ ^[0-9a-f]{40}$ ]]; then
+      sha="${pin}"
+    else
+      # An annotated tag has to be peeled, or the recorded version is the tag
+      # object rather than a commit. Only annotated tags answer to ^{}, so a
+      # branch or a lightweight tag falls through to the second query.
+      sha=$(git ls-remote "${site}" "${pin}^{}" | head -1 | cut -f1)
+      [ -n "${sha}" ] || sha=$(git ls-remote "${site}" "${pin}" | head -1 | cut -f1)
+    fi
     [ -n "${sha}" ] || { echo "${addon}: no such ref ${pin} at ${site}" >&2; exit 1; }
     echo "==> ${addon}: pinning to ${pin} (${sha})"
     sed -i "s|^PKG_VERSION=.*|PKG_VERSION=\"${sha}\"|" "${package}"

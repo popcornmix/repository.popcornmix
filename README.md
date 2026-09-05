@@ -74,6 +74,30 @@ against the libraries the image actually ships — the daemon needs `libplist-2.
 `libcrypto.so.3` at runtime, and gets both from Kodi's own dependencies rather than from
 anything the zip carries.
 
+Only a pushed commit can be built, because LibreELEC fetches the sources from GitHub rather
+than from any checkout — which is as it should be, for a binary published under the GPL.
+
+### The build tree
+
+`build-addons.sh` builds in `~/projects/LibreELEC-addons`, a checkout kept for this and
+nothing else, made as a worktree off the ordinary one:
+
+```bash
+cd ~/projects/LibreELEC.tv
+git worktree add --detach ~/projects/LibreELEC-addons <the branch carrying the add-on package>
+ln -s ~/projects/LibreELEC.tv/sources ~/projects/LibreELEC-addons/sources
+```
+
+The symlink shares the download cache, which is most of what a fresh tree would otherwise
+have to fetch. `LE=...` points the script somewhere else.
+
+It has to be a tree with nothing in it but LibreELEC and the add-on package. Local patches
+put something no user is running into the published binary, and a patch meant for one board
+stops the other targets building at all — a Raspberry Pi kernel patch in
+`packages/linux/patches/` fails to apply to the mainline kernel that Generic and ARM use, and
+takes `linux:host` down with it, which the toolchain needs for its kernel headers. The
+ordinary working tree is for working in.
+
 The targets are LibreELEC's own lowest-common-denominator add-on projects, `Generic`, `ARMv8`
 and `ARMv7`, which is what every other project points its users at. This matters more than
 it looks: Kodi picks a build by architecture alone, so an aarch64 build made as RPi5 would be
