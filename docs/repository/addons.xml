@@ -14,6 +14,18 @@
         <datadir zip="true">https://popcornmix.github.io/repository.popcornmix/piers/aarch64</datadir>
         <hashes>false</hashes>
       </dir>
+      <dir minversion="21.90.0" maxversion="22.9.9">
+        <info>https://popcornmix.github.io/repository.popcornmix/piers/armv7/addons.xml</info>
+        <checksum verify="sha256">https://popcornmix.github.io/repository.popcornmix/piers/armv7/addons.xml.sha256</checksum>
+        <datadir zip="true">https://popcornmix.github.io/repository.popcornmix/piers/armv7</datadir>
+        <hashes>false</hashes>
+      </dir>
+      <dir minversion="21.90.0" maxversion="22.9.9">
+        <info>https://popcornmix.github.io/repository.popcornmix/piers/x86_64/addons.xml</info>
+        <checksum verify="sha256">https://popcornmix.github.io/repository.popcornmix/piers/x86_64/addons.xml.sha256</checksum>
+        <datadir zip="true">https://popcornmix.github.io/repository.popcornmix/piers/x86_64</datadir>
+        <hashes>false</hashes>
+      </dir>
     </extension>
     <extension point="xbmc.addon.metadata">
       <platform>all</platform>
