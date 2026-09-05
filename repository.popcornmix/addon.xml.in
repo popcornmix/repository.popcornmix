@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<addon id="repository.popcornmix"
+       name="popcornmix Add-ons"
+       version="1.0.0"
+       provider-name="popcornmix">
+  <extension point="xbmc.addon.repository" name="popcornmix Add-ons">
+@DIRS@
+  </extension>
+  <extension point="xbmc.addon.metadata">
+    <platform>all</platform>
+    <license>GPL-2.0-or-later</license>
+    <source>https://github.com/popcornmix/repository.popcornmix</source>
+    <assets>
+      <icon>icon.png</icon>
+      <fanart>fanart.png</fanart>
+    </assets>
+    <summary lang="en_GB">Add-ons by popcornmix</summary>
+    <description lang="en_GB">Binary add-ons for Kodi and LibreELEC, built for each Kodi release and architecture. Currently: inputstream.airplay, an AirPlay receiver for screen mirroring, video streamed from apps, and audio.</description>
+  </extension>
+</addon>
