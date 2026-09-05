@@ -260,16 +260,29 @@ def build(check):
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes(data)
 
+    # The repository add-on's zip is named after its version, so a version bump
+    # leaves the one before it behind, still served and still installable.
+    left_over = [
+        path
+        for path in (DOCS / SELF_DIR / REPO_ID).glob(f"{REPO_ID}-*.zip")
+        if path.relative_to(ROOT) not in files
+    ]
+
     if check:
         for path in stale:
             print(f"out of date: {path}")
-        if stale:
+        for path in left_over:
+            print(f"left over: {path.relative_to(ROOT)}")
+        if stale or left_over:
             sys.exit("docs/ does not match its sources; run tools/make_repo.py build")
         print("docs/ is up to date")
     else:
         for path in stale:
             print(f"wrote {path}")
-        if not stale:
+        for path in left_over:
+            path.unlink()
+            print(f"removed {path.relative_to(ROOT)}")
+        if not stale and not left_over:
             print("docs/ was already up to date")
 
 
