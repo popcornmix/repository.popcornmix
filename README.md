@@ -33,7 +33,7 @@ docs/
     addons.xml                                     architecture (also omega/*)
     addons.xml.sha256
     inputstream.airplay/
-      inputstream.airplay-0.1.2.1.zip
+      inputstream.airplay-0.1.3.1+piers.aarch64.zip
       icon.png
 repository.popcornmix/                           source of the repository add-on
   addon.xml.in                                   @DIRS@ is filled in from what docs/ holds
@@ -81,6 +81,37 @@ The targets are LibreELEC's own lowest-common-denominator add-on projects, `Gene
 and `ARMv7`, which is what every other project points its users at. This matters more than
 it looks: Kodi picks a build by architecture alone, so an aarch64 build made as RPi5 would be
 tuned for Cortex-A76, offered to a Cortex-A53 box, and crash on it.
+
+### What a published version says
+
+A published version names the build it is:
+
+```
+inputstream.airplay-0.1.3.1+omega.aarch64.zip
+                    ~~~~~ ~ ~~~~~ ~~~~~~~
+                      |   |   |      architecture
+                      |   |   Kodi release
+                      |   LibreELEC's PKG_REV
+                      the add-on's own version
+```
+
+Kodi builds a zip's URL from the add-on id and version alone, so without that tail the six
+builds would share three filenames — and `CAddonInstallJob` installs a cached zip of the
+right name whatever is inside it. That is not hypothetical: it put a Piers build on a Kodi 21
+box, which then failed at instance creation with an incompatible API version.
+
+The tail comes from `PKG_REV`, because LibreELEC composes the version as
+`<the add-on's addon.xml version>.<PKG_REV>` and uses `PKG_REV` for nothing else.
+
+Three things about the spelling, all of which fail quietly if got wrong:
+
+- **A dot, never a dash.** `CAddonVersion` treats everything after the *first* dash as the
+  revision, so `+omega-aarch64` would leave every architecture comparing equal.
+- **The tail goes after LibreELEC's revision.** Kodi's own convention would be
+  `0.1.3+omega.1`, but `+` (0x2B) sorts below `.` (0x2E), so that is *less* than a plain
+  `0.1.3.1` and no installed copy would ever be offered it.
+- **Only `[a-z0-9.+_@~]` survives.** `_` being legal is what lets `x86_64` through. An
+  invalid character does not raise an error: the whole version silently becomes `0.0.0`.
 
 ### The build trees
 
@@ -186,6 +217,7 @@ GitHub Pages needs turning on once, under **Settings → Pages → Deploy from a
 `tools/make_repo.py`; changing it means bumping the add-on version and re-publishing, and
 anyone who installed the old zip keeps pointing at the old URL until they do.
 
-There are no hashes on the add-on zips (`<hashes>false</hashes>`, as LibreELEC's own
-repository has it). The index is covered by `addons.xml.sha256`, and both are fetched over
-HTTPS.
+Every zip has a `.sha256` beside it and every `<dir>` declares `<hashes>sha256</hashes>`.
+That is what makes Kodi drop whatever it has cached under that name, fetch the file again and
+check it; with hashes off it reuses the cached copy unexamined. LibreELEC's own repository can
+afford `false` because it serves one build per URL.

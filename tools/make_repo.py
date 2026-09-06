@@ -50,7 +50,13 @@ ZIP_DATE = (1980, 1, 1, 0, 0, 0)
 
 
 def version_key(version):
-    return tuple(int(part) for part in re.findall(r"\d+", version))
+    """Order by the numeric components, ignoring any +flavour tail.
+
+    The tail names the Kodi release and architecture, so it is the same for
+    every zip in one directory and only what precedes it tells two builds
+    apart -- while the digits inside "aarch64" would swamp the comparison.
+    """
+    return tuple(int(part) for part in re.findall(r"\d+", version.split("+")[0]))
 
 
 def addon_xml_from_zip(path):

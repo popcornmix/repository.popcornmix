@@ -113,6 +113,19 @@ for target in "${selected[@]}"; do
 
   echo "==> ${series}: ${project}/${device} ${arch} (${repo_arch})"
   for addon in ${ADDONS}; do
+    # LibreELEC builds the add-on version as <its addon.xml version>.<PKG_REV>,
+    # so naming the flavour in PKG_REV carries it into both the version and the
+    # zip: inputstream.airplay-0.1.3.1+omega.aarch64.zip. Six builds of one
+    # add-on otherwise share three filenames, and Kodi's package cache is keyed
+    # on the filename alone -- it will install a cached zip of the right name
+    # whatever is inside it.
+    #
+    # A dot, never a dash: CAddonVersion takes everything after the first dash
+    # as the revision, which would leave every architecture comparing equal.
+    package="packages/mediacenter/kodi-binary-addons/${addon}/package.mk"
+    rev=$(sed -n 's/^PKG_REV="\([0-9]*\).*/\1/p' "${package}")
+    sed -i "s|^PKG_REV=.*|PKG_REV=\"${rev}+${series}.${repo_arch}\"|" "${package}"
+
     # LibreELEC skips an add-on it has already built, so drop both the stamp
     # and the previous output to make a rebuild actually rebuild.
     PROJECT="${project}" DEVICE="${device}" ARCH="${arch}" scripts/clean "${addon}"
