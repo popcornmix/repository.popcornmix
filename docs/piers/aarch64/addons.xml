@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <addons>
-  <addon id="inputstream.airplay" version="0.1.4.1+piers.aarch64" name="AirPlay Receiver" provider-name="popcornmix">
+  <addon id="inputstream.airplay" version="0.1.4.2+piers.aarch64" name="AirPlay Receiver" provider-name="popcornmix">
     <requires>
       <import addon="kodi.binary.global.main" minversion="2.0.3" version="2.0.3" />
       <import addon="kodi.binary.global.filesystem" minversion="1.1.11" version="1.1.11" />
