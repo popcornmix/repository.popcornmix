@@ -108,6 +108,11 @@ def serialise(addons):
     return ('<?xml version="1.0" encoding="UTF-8"?>\n' + ET.tostring(addons, encoding="unicode") + "\n").encode()
 
 
+def digest(data, name):
+    """A sha256sum line, which is also what Kodi reads up to the first space."""
+    return f"{hashlib.sha256(data).hexdigest()}  {name}\n".encode()
+
+
 def targets():
     """Published (series, arch) pairs, in the order they appear in the tables."""
     for series in SERIES:
@@ -128,7 +133,7 @@ def dir_block(path, comment, minversion=None, maxversion=None):
         f"      <info>{url}/addons.xml</info>\n"
         f'      <checksum verify="sha256">{url}/addons.xml.sha256</checksum>\n'
         f'      <datadir zip="true">{url}</datadir>\n'
-        f"      <hashes>false</hashes>\n"
+        f"      <hashes>sha256</hashes>\n"
         f"    </dir>"
     )
 
@@ -214,10 +219,13 @@ def generate():
             set_platform(root, ARCHES[arch])
             addons.append(root)
             versions[addon_id] = root.get("version")
+            files[path.relative_to(ROOT).with_name(path.name + ".sha256")] = digest(
+                path.read_bytes(), path.name
+            )
         index = serialise(addons)
         base = Path("docs") / series / arch
         files[base / "addons.xml"] = index
-        files[base / "addons.xml.sha256"] = (hashlib.sha256(index).hexdigest() + "\n").encode()
+        files[base / "addons.xml.sha256"] = digest(index, "addons.xml")
         published.append((series, arch, versions))
 
     addon_xml = repository_addon_xml()
@@ -230,7 +238,7 @@ def generate():
     index = serialise(addons)
     base = Path("docs") / SELF_DIR
     files[base / "addons.xml"] = index
-    files[base / "addons.xml.sha256"] = (hashlib.sha256(index).hexdigest() + "\n").encode()
+    files[base / "addons.xml.sha256"] = digest(index, "addons.xml")
 
     contents = [(f"{REPO_ID}/addon.xml", addon_xml)]
     for asset in assets(root):
@@ -241,7 +249,9 @@ def generate():
     for name, data in contents:
         buffer.writestr(zipfile.ZipInfo(name, ZIP_DATE), data)
     buffer.close()
-    files[base / REPO_ID / f"{REPO_ID}-{version}.zip"] = zip_path.read_bytes()
+    zip_name = f"{REPO_ID}-{version}.zip"
+    files[base / REPO_ID / zip_name] = zip_path.read_bytes()
+    files[base / REPO_ID / f"{zip_name}.sha256"] = digest(zip_path.read_bytes(), zip_name)
     zip_path.unlink()
 
     files[Path("docs/index.html")] = index_html(published).encode()
@@ -260,11 +270,12 @@ def build(check):
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes(data)
 
-    # The repository add-on's zip is named after its version, so a version bump
-    # leaves the one before it behind, still served and still installable.
+    # A zip is named after its version, so a version bump writes a new file
+    # beside the old one rather than over it, leaving the old one served and
+    # still installable.
     left_over = [
         path
-        for path in (DOCS / SELF_DIR / REPO_ID).glob(f"{REPO_ID}-*.zip")
+        for path in [*(DOCS / SELF_DIR / REPO_ID).glob(f"{REPO_ID}-*.zip"), *DOCS.rglob("*.sha256")]
         if path.relative_to(ROOT) not in files
     ]
 
