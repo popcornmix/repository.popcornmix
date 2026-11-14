@@ -11,7 +11,7 @@ architecture, and keeps the add-on up to date from here.
 ## For users
 
 Everything they need is on the [landing page](https://popcornmix.github.io/repository.popcornmix/).
-In short: download `repository.popcornmix-2.2.0.zip`, turn on *Unknown sources* under
+In short: download `repository.popcornmix-2.2.1.zip`, turn on *Unknown sources* under
 **Settings → System → Add-ons**, install it with **Install from zip file**, then install
 AirPlay Receiver from **Install from repository → popcornmix Add-ons**.
 
@@ -27,7 +27,7 @@ docs/
     addons.xml                                     so it can update itself in place
     addons.xml.sha256
     repository.popcornmix/
-      repository.popcornmix-2.2.0.zip            the zip a user installs
+      repository.popcornmix-2.2.1.zip            the zip a user installs
       icon.png, fanart.png
   piers/aarch64/                                 one directory per Kodi release and
     addons.xml                                     architecture (also omega/*)

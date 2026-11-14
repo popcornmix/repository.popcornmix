@@ -26,9 +26,12 @@ REPO_URL = "https://popcornmix.github.io/repository.popcornmix"
 # (ADDON_API in Kodi's version.txt), which trails the Kodi version through a
 # development cycle: Kodi 22 alphas report 21.90.x and only the release reports
 # 22.0.0. Hence each range starts at the previous major's .90.
+#
+# Piers also covers Kodi 23 development builds (22.90.x), whose binary
+# interface minimums still accept a Piers build.
 SERIES = {
     "omega": ("20.90.0", "21.9.9", "Kodi 21 Omega"),
-    "piers": ("21.90.0", "22.9.9", "Kodi 22 Piers"),
+    "piers": ("21.90.0", "22.99.99", "Kodi 22 Piers"),
 }
 
 # Kodi has no notion of a LibreELEC project, so an aarch64 build serves every
